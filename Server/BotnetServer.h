@@ -42,9 +42,21 @@ private:
 		return func_vector[command-1];
 	};
 
+	/**
+	* Thread responsible for getting and handling messages.
+	*/
 	void GetMessages();
+	/**
+	* Thread responsible for getting and handling connections.
+	* Gets connections and checks if are really bots, before adding them to master_set.
+	*/
 	void GetConnections();
-	virtual void HandleMessage(const std::string& msg, const tcpSocket& socket) override;
+	/**
+	* Checks if connection reveived is really a bot.
+	* Send an authentication message and waits to receive a correct answer.
+	* Return value: returns wether connection is a bot or not.
+	*/
+	bool AuthenticateBot(const tcpSocket& connection);
 
 	/* CLI functions */
 	std::string GetCLIPrompt() const;
@@ -60,7 +72,15 @@ private:
 
 	/* Botnet commands helpers */
 
+	/**
+	* Reads IP from standard input, and returns the first legal
+	* IP adress received.
+	*/
 	std::string ReadIP();
+	/**
+	* Checks if givven IP address is legal.
+	* Legal IP: XXX.XXX.XXX.XXX; X >= 0; X <= 255;
+	*/
 	bool LegalIP(const std::string& IP_address) const;
 	
 	static const int ALL_BOTS = -1;

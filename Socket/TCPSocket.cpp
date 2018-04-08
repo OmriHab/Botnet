@@ -1,3 +1,4 @@
+#include <array>
 #include <iostream>
 #include <string.h>
 
@@ -75,7 +76,7 @@ int tcpSocket::Send(const std::string& msg) const {
 	int bytes_sent          = 0;
 	std::string msg_to_send = msg;
 
-	while (left_to_send > 0){
+	while (left_to_send > 0) {
 		bytes_sent = send(this->GetSockId(), msg_to_send.c_str(), msg_to_send.length(), FLAGS);
 		
 		// On send malfunction return how much was sent until now
@@ -116,7 +117,6 @@ int tcpSocket::Send(const void* msg, size_t size) const {
 	return size;
 }
 
-
 int tcpSocket::Recv(std::string& msg, int length) const {
 	/* Socket must be connected before sending a message using send */
 	if (!this->connected) {
@@ -153,6 +153,35 @@ int tcpSocket::Recv(std::string& msg, int length) const {
 
 	return bytes_read;
 }
+
+int tcpSocket::Recv(std::string& msg, int length, int timeout_secs) const {
+	/* Socket must be connected before sending a message using send */
+	if (!this->connected) {
+		throw SocketNotConnected("tcpSocket::recv(msg, length): error, socket " + std::to_string(this->GetSockId()) + " not connected");
+	}
+	std::array<char, length> message;
+
+	static const int FLAGS = 0;
+	int bytes_read = 0;;
+
+	/* Receive the message and copy string to msg */
+	bytes_read = recv(this->GetSockId(), message.data(), length, FLAGS);
+	
+	// On error or connection close, return ret_val
+	if (bytes_read <= 0) {
+		return bytes_read;
+	}
+
+	// Size msg as bytes_read and copy message to it
+	msg.resize(bytes_read);
+	for (int i = 0; i < bytes_read; i++) {
+		msg[i] = message[i];
+	}
+
+	return bytes_read;
+
+}
+
 
 bool tcpSocket::Connect(const std::string& host, const std::string& port) {
 	struct addrinfo hints, *results, *pResults;

@@ -78,6 +78,11 @@ public:
 	* Return value: number of bytes received, or 0 on closed connection, or -1 on error.
 	*/
 	int Recv(std::string& msg, int length) const;
+	/**
+	* Like Recv, but with timeout_secs. If timed out, -2 will be returned
+	* Return value: number of bytes received, or 0 on closed connection, -1 on error, and -2 on timeout.
+	*/
+	int Recv(std::string& msg, int length, int timeout_secs) const;
 
 	/**
 	* Connect to a host address.
