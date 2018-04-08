@@ -6,44 +6,49 @@
 #include <string.h>
 #include <termios.h>
 #include <thread>
+#include <limits.h>
 
 #include "Server.h"
 
 
-using namespace http;
+using namespace botnet;
 
 server::server(int port, int max_connections, bool verbose)
-	: MainSocket(port)
+	: verbose(verbose)
+	, continue_serving(true)
+	, MainSocket(port)
 	, max_connections(max_connections)
-	, verbose(verbose)
-	, master_set(Socket_Set<tcpSocket>::READ)
-	, continue_serving(true) { }
+	, master_set(Socket_Set<tcpSocket>::READ) { }
 
 server::~server() {
-	std::deque<tcpSocket> sockets = this->master_set.GetAllSockets();
 
 	ThreadSafeLog("Shutting down...\n");
 	ThreadSafeLog("Closing all open sockets...\n");
 	// Close all sockets we opened and haven't closed, including the listener socket
-	for (const auto& socket : sockets) {
+	for (const auto& socket : this->master_set.GetAllSockets()) {
+		ThreadSafeLog("Closing socket " + std::to_string(socket.GetSockId()) + "\n");
 		socket.Close();
+		ThreadSafeLog(std::to_string(socket.GetSockId()) + " closed\n");
 	}
+	ThreadSafeLog("All done\n");
 }
 
 bool server::Serve() {
 	// Set up server
 	try {
-		if (!SetUpServer()) {
-			ThreadSafeLog("Server: Failed to set up server, aborting\n", std::cerr);
+		if (!this->SetUpServer()) {
+			// No need for thread safety if reached here
+			std::cerr << "Server: Failed to set up server, aborting" << std::endl;
 			return false;
 		}
 	}
 	catch (const std::exception& e) {
-		ThreadSafeLog("Server: Failed to set up server " + std::string(e.what()) + "\n", std::cerr);
+		// No need for thread safety if reached here
+		std::cerr << "Server: Failed to set up server " << std::string(e.what()) << std::endl;
 	}
 	/*** MainSocket binded and listening ***/
 
-	HandleConnections();
+	this->HandleConnections();
 	
 	return true;
 }
@@ -84,7 +89,7 @@ void server::HandleConnections() {
 			continue;
 		}
 		
-		for (auto socket : readable) {
+		for (auto& socket : readable) {
 			// If socket is the listener, try to accept the new socket
 			if (socket.isListening()) {
 				// If succedded in accepting new socket, add to master set
@@ -134,4 +139,12 @@ void server::ThreadSafeLogPrintAlways(const std::string& msg, std::ostream& stre
 	std::lock_guard<std::mutex> lg(this->out_stream_lock);
 	// Output
 	stream << msg << std::flush;
+}
+
+std::string server::ThreadSafeGetLine(std::istream& stream) {
+	std::string input;
+
+	std::lock_guard<std::mutex> read_lock(out_stream_lock);
+	std::getline(stream, input);
+	return input;
 }

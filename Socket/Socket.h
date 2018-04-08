@@ -3,7 +3,7 @@
 
 #include <netdb.h>
 
-namespace http {
+namespace botnet {
 
 class Socket {
 public:
@@ -46,6 +46,8 @@ public:
 	int GetPort() const;
 	// Returns IP version
 	IPv GetIpVersion() const;
+	// Returns IP address
+	std::string GetIp() const;
 
 	/**
 	* CanRead - returns if socket is able to be read from

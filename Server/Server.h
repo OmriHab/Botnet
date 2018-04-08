@@ -3,7 +3,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <list>
 #include <mutex>
 #include <string>
 
@@ -12,10 +11,12 @@
 #include "../Socket/TCPSocket.h"
 
 
-namespace http {
+namespace botnet {
 
 class server {
-private:
+protected:
+	typedef std::map<std::string, std::string> StringMap;
+
 	/**
 	* Verbose flag,
 	* if true, print errors and log,
@@ -39,6 +40,15 @@ private:
 	* are connected will be denied and ignored.
 	*/
 	int max_connections;
+	
+	/**
+	* Master set of all sockets, including the listening socket, MainSocket
+	*/
+	Socket_Set<tcpSocket> master_set;
+	/** 
+	* Connections management lock, lock whenever wishing to access master_set
+	*/
+	std::mutex master_set_lock;
 
 	/**
 	* SetUpServer - Sets up server, gets MainSocket up and listening
@@ -57,25 +67,30 @@ private:
 	*/
 	virtual void HandleMessage(const std::string& msg, const tcpSocket& socket);
 
-	/* Out stream write lock */
-	std::mutex out_stream_lock;
-	/* Connections management lock */
-	std::mutex connections_lock;
-
-protected:
 	/**
-	* Thread safe log, print if verbose is true.
+	* Thread safe log, print if verbose is true. Uses out_stream_lock.
 	* msg    - Message to write.
 	* stream - Stream to write to. Default: Standard Output.
 	*/
 	void ThreadSafeLog(const std::string& msg, std::ostream& stream=std::cout);	
 	/**
-	* Thread safe log, print wether verbose is true or false.
+	* Thread safe log, print wether verbose is true or false. Uses out_stream_lock.
 	* msg    - Message to write.
 	* stream - Stream to write to. Default: Standard Output.
 	*/
 	void ThreadSafeLogPrintAlways(const std::string& msg, std::ostream& stream=std::cout);
-	Socket_Set<tcpSocket> master_set;
+	/**
+	* Thread safe getline. Uses in_stream_lock.
+	* stream - Stream to read from. Default: Standard input.
+	*/
+	std::string ThreadSafeGetLine(std::istream& stream=std::cin);
+
+
+	/**
+	* Out and in stream locks.
+	*/
+	std::mutex out_stream_lock;
+	std::mutex in_stream_lock;
 
 public:
 	/**

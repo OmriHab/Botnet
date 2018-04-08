@@ -7,7 +7,7 @@
 #include "Socket.h"
 
 
-namespace http {
+namespace botnet {
 
 /* Socket not connected exception */
 class SocketNotConnected : public std::runtime_error {
@@ -64,9 +64,14 @@ public:
 
 	/**
 	* Sends message, sent message length is set as msg.length()
-	* Return value: number of bytes received, or -1 on error.
+	* Return value: number of bytes sent, or -1 on error.
 	*/
 	int Send(const std::string& msg) const;
+	/**
+	* Sends void*, size is gotten from var "size"
+	* Return value: number of bytes sent, or -1 on error.
+	*/
+	int Send(const void* msg, size_t size) const;
 	/**
 	* Length specifies the largest amount of bytes willing to receive
 	* Message received will be placed in msg

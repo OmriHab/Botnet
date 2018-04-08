@@ -5,7 +5,7 @@
 #include "SocketIncludes.h"
 
 
-using namespace http;
+using namespace botnet;
 
 
 tcpSocket::tcpSocket(const tcpSocket& copy)
@@ -80,13 +80,42 @@ int tcpSocket::Send(const std::string& msg) const {
 		
 		// On send malfunction return how much was sent until now
 		if (bytes_sent == -1) {
-			msg.length() - left_to_send;
+			return msg.length() - left_to_send;
 		}
 
 		left_to_send -= bytes_sent;
 		msg_to_send   = msg_to_send.substr(bytes_sent);
 	}
+
+	return msg.length();
 }
+
+int tcpSocket::Send(const void* msg, size_t size) const {
+	/* Socket must be connected before sending a message using send */
+	if (!this->connected) {
+		throw SocketNotConnected("tcpSocket::Send(msg): error, socket not connected");
+	}
+	static const int FLAGS = 0;
+	
+	int left_to_send        = size;
+	int bytes_sent          = 0;
+
+	while (left_to_send > 0){
+		bytes_sent = send(this->GetSockId(), msg, size, FLAGS);
+		
+		// On send malfunction return how much was sent until now
+		if (bytes_sent == -1) {
+			return size - left_to_send;
+		}
+
+		left_to_send -= bytes_sent;
+		// Cast to char* to tell the compiler to add one byte for each byte sent
+		msg           = static_cast<const void*>(static_cast<const char*>(msg)+bytes_sent);
+	}
+
+	return size;
+}
+
 
 int tcpSocket::Recv(std::string& msg, int length) const {
 	/* Socket must be connected before sending a message using send */
@@ -133,7 +162,7 @@ bool tcpSocket::Connect(const std::string& host, const std::string& port) {
 	hints.ai_socktype = SOCK_STREAM;	// Use TCP
 	hints.ai_flags    = AI_PASSIVE;		// Enter my ip address
 
-	int rv;
+	int rv = 0;
 
 	if ((rv = getaddrinfo(host.c_str(), port.c_str(), &hints, &results)) != 0) {
 		throw std::runtime_error("tcpSocket::Connect(host,port): getaddrinfo error, " + std::string(strerror(rv)));
@@ -154,6 +183,8 @@ bool tcpSocket::Connect(const std::string& host, const std::string& port) {
 	if (pResults == nullptr) {
 		throw std::runtime_error("tcpSocket::Connect(host,port): Unable to connect to " + host + ":" + port);
 	}
+
+	return true;
 }
 
 bool tcpSocket::EnableKeepAlive() {

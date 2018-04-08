@@ -13,7 +13,7 @@
 #include "TCPSocket.h"
 
 
-namespace http {
+namespace botnet {
 
 
 template<class T=Socket>
@@ -28,7 +28,7 @@ private:
 	std::map<int, T> socket_map;
 public:
 
-	Socket_Set(Op operation) : operation(operation), max_fd(0) { FD_ZERO(&set); }
+	Socket_Set(Op operation) : max_fd(0), operation(operation) { FD_ZERO(&set); }
 	~Socket_Set() = default;
 	
 	Socket_Set<T>& operator=(const Socket_Set<T>& other);

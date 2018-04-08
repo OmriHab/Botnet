@@ -6,12 +6,11 @@
 #include "Socket.h"
 
 
-using namespace http;
+using namespace botnet;
 
 Socket::Socket(int port, Type protocol, IPv ip_version) {
 	/*--Vars--*/
 	struct addrinfo hints, *results, *pResults;
-	socklen_t addr_size;
 	static const int MAX_PORT = 65535;
 
 	/* Check for legal port number */
@@ -135,6 +134,32 @@ Socket::IPv Socket::GetIpVersion() const {
 	}
 	return UNSPECIFIED;
 }
+
+std::string Socket::GetIp() const {
+	std::string IP = "";
+	switch (this->GetIpVersion()) {
+		case IPv4: {
+				IP = inet_ntoa(reinterpret_cast<const struct sockaddr_in*>(this->self_address)->sin_addr);
+				break;
+			}
+		case IPv6: {
+				char IPv6_address[INET6_ADDRSTRLEN] = { 0 };
+				if (inet_ntop(AF_INET6, &reinterpret_cast<const struct sockaddr_in6*>(this->self_address)->sin6_addr,
+							  IPv6_address, INET6_ADDRSTRLEN) != 0)
+				{
+					IP = IPv6_address;
+				}
+				break;
+			}
+		case UNSPECIFIED: {
+				// Nothing to do on unspecified
+				break;
+			}
+	}
+	// If unknown which ip version using, or on inet_ntop error, return an empty string
+	return IP;
+}
+
 
 bool Socket::Bind() {
 	int rv = bind(this->sock_id,
