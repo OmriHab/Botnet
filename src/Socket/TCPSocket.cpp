@@ -1,5 +1,7 @@
 #include <array>
 #include <iostream>
+#include <memory>
+#include <poll.h>
 #include <string.h>
 
 #include "TCPSocket.h"
@@ -117,55 +119,74 @@ int tcpSocket::Send(const void* msg, size_t size) const {
 	return size;
 }
 
-int tcpSocket::Recv(std::string& msg, int length) const {
+// int tcpSocket::Recv(std::string& msg, int length) const {
+// 	/* Socket must be connected before sending a message using send */
+// 	if (!this->connected) {
+// 		throw SocketNotConnected("tcpSocket::recv(msg, length): error, socket " + std::to_string(this->GetSockId()) + " not connected");
+// 	}
+// 	char* message = new char[length];
+// 	static const int FLAGS = 0;
+// 	int bytes_read = 0;;
+
+// 	/* Receive the message and copy string to msg */
+// 	try {
+// 		bytes_read = recv(this->GetSockId(), message, length, FLAGS);
+// 		if (bytes_read <= 0) {
+// 			if (message != nullptr){
+// 				delete[] message;
+// 				message = nullptr;
+// 			}
+// 			return bytes_read;
+// 	}
+
+// 		// Size msg as bytes_read and copy message to it
+// 		msg.resize(bytes_read);
+// 		for (int i = 0; i < bytes_read; i++) {
+// 			msg[i] = message[i];
+// 		}
+// 	}
+// 	catch (const std::exception& e) {
+// 		if (message != nullptr){
+// 			delete[] message;
+// 			message = nullptr;
+// 		}
+// 		throw;
+// 	}
+
+// 	return bytes_read;
+// }
+
+int tcpSocket::Recv(std::string& msg, int length, double timeout_secs) const {
 	/* Socket must be connected before sending a message using send */
 	if (!this->connected) {
 		throw SocketNotConnected("tcpSocket::recv(msg, length): error, socket " + std::to_string(this->GetSockId()) + " not connected");
 	}
-	char* message = new char[length];
-	static const int FLAGS = 0;
-	int bytes_read = 0;;
 
-	/* Receive the message and copy string to msg */
-	try {
-		bytes_read = recv(this->GetSockId(), message, length, FLAGS);
-		if (bytes_read <= 0) {
-			if (message != nullptr){
-				delete[] message;
-				message = nullptr;
-			}
-			return bytes_read;
-	}
+	struct pollfd poll_fd;
+	int poll_ret_val;
+	// If timeout_secs is negative, set timeout_ms as -1, meaning wait indefinetly.
+	int timeout_ms = timeout_secs > 0 ? static_cast<int>(timeout_secs * 1000) : -1;
 
-		// Size msg as bytes_read and copy message to it
-		msg.resize(bytes_read);
-		for (int i = 0; i < bytes_read; i++) {
-			msg[i] = message[i];
-		}
-	}
-	catch (const std::exception& e) {
-		if (message != nullptr){
-			delete[] message;
-			message = nullptr;
-		}
-		throw;
-	}
-
-	return bytes_read;
-}
-
-int tcpSocket::Recv(std::string& msg, int length, int timeout_secs) const {
-	/* Socket must be connected before sending a message using send */
-	if (!this->connected) {
-		throw SocketNotConnected("tcpSocket::recv(msg, length): error, socket " + std::to_string(this->GetSockId()) + " not connected");
-	}
-	std::array<char, length> message;
+	std::unique_ptr<char[]> message(new char[length]);
 
 	static const int FLAGS = 0;
-	int bytes_read = 0;;
+	int bytes_read = 0;
+
+	poll_fd.fd = this->GetSockId();
+	poll_fd.events = POLLIN;
+	poll_ret_val = poll(&poll_fd, 1, timeout_ms);
+
+	if (poll_ret_val == -1) {
+		// On error
+		return -1;
+	}
+	else if (poll_ret_val == 0) {
+		// On timeout
+		return -2;
+	}
 
 	/* Receive the message and copy string to msg */
-	bytes_read = recv(this->GetSockId(), message.data(), length, FLAGS);
+	bytes_read = recv(this->GetSockId(), message.get(), length, FLAGS);
 	
 	// On error or connection close, return ret_val
 	if (bytes_read <= 0) {
@@ -175,11 +196,45 @@ int tcpSocket::Recv(std::string& msg, int length, int timeout_secs) const {
 	// Size msg as bytes_read and copy message to it
 	msg.resize(bytes_read);
 	for (int i = 0; i < bytes_read; i++) {
-		msg[i] = message[i];
+		msg[i] = message.get()[i];
 	}
 
 	return bytes_read;
+}
 
+int tcpSocket::Recv(void* msg, int length, double timeout_secs) const {
+	/* Socket must be connected before sending a message using send */
+	if (!this->connected) {
+		throw SocketNotConnected("tcpSocket::recv(msg, length): error, socket " + std::to_string(this->GetSockId()) + " not connected");
+	}
+
+	struct pollfd poll_fd;
+	int poll_ret_val;
+	// If timeout_secs is negative, set timeout_ms as -1, meaning wait indefinetly.
+	int timeout_ms = timeout_secs > 0 ? static_cast<int>(timeout_secs * 1000) : -1;
+
+	std::unique_ptr<char[]> message(new char[length]);
+
+	static const int FLAGS = 0;
+	int bytes_read = 0;
+
+	poll_fd.fd = this->GetSockId();
+	poll_fd.events = POLLIN;
+	poll_ret_val = poll(&poll_fd, 1, timeout_ms);
+
+	if (poll_ret_val == -1) {
+		// On error
+		return -1;
+	}
+	else if (poll_ret_val == 0) {
+		// On timeout
+		return -2;
+	}
+
+	/* Receive the message */
+	bytes_read = recv(this->GetSockId(), msg, length, FLAGS);
+	
+	return bytes_read;
 }
 
 
@@ -194,7 +249,8 @@ bool tcpSocket::Connect(const std::string& host, const std::string& port) {
 	int rv = 0;
 
 	if ((rv = getaddrinfo(host.c_str(), port.c_str(), &hints, &results)) != 0) {
-		throw std::runtime_error("tcpSocket::Connect(host,port): getaddrinfo error, " + std::string(strerror(rv)));
+		// if getaddrinfo failed, return false
+		return false;
 	}
 
 	for (pResults = results; pResults != nullptr; pResults = pResults->ai_next) {
@@ -210,9 +266,10 @@ bool tcpSocket::Connect(const std::string& host, const std::string& port) {
 
 	// If reached the end without breaking, nothing was found.
 	if (pResults == nullptr) {
-		throw std::runtime_error("tcpSocket::Connect(host,port): Unable to connect to " + host + ":" + port);
+		return false;
 	}
 
+	this->connected = true;
 	return true;
 }
 

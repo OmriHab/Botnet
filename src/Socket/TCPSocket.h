@@ -75,14 +75,10 @@ public:
 	/**
 	* Length specifies the largest amount of bytes willing to receive
 	* Message received will be placed in msg
-	* Return value: number of bytes received, or 0 on closed connection, or -1 on error.
-	*/
-	int Recv(std::string& msg, int length) const;
-	/**
-	* Like Recv, but with timeout_secs. If timed out, -2 will be returned
 	* Return value: number of bytes received, or 0 on closed connection, -1 on error, and -2 on timeout.
 	*/
-	int Recv(std::string& msg, int length, int timeout_secs) const;
+	int Recv(std::string& msg, int length, double timeout_secs=-1.0) const;
+	int Recv(void* msg, int length, double timeout_secs=-1.0) const;
 
 	/**
 	* Connect to a host address.

@@ -1,4 +1,4 @@
-#include "Server/BotnetServer.h"
+#include "BotnetServer.h"
 
 
 int main(int argc, char* argv[]) {
