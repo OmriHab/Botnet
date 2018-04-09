@@ -11,7 +11,7 @@ Then cd into the folder `cd Botnet`, and make it by using `make` <br>
 Run the server using `./BotnetServer`<br>
 Run the bot using `./BotnetBot`
 ## Botnet Server Commands
-When using the botnet server CLI, you will be given the options of:<br>
+When using the botnet server CLI, you will be given the options of:
 + Print Bots:
   + Prints list of connected bots with their IP address and Id
 + Syn Flood:

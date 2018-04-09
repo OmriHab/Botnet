@@ -119,43 +119,6 @@ int tcpSocket::Send(const void* msg, size_t size) const {
 	return size;
 }
 
-// int tcpSocket::Recv(std::string& msg, int length) const {
-// 	/* Socket must be connected before sending a message using send */
-// 	if (!this->connected) {
-// 		throw SocketNotConnected("tcpSocket::recv(msg, length): error, socket " + std::to_string(this->GetSockId()) + " not connected");
-// 	}
-// 	char* message = new char[length];
-// 	static const int FLAGS = 0;
-// 	int bytes_read = 0;;
-
-// 	/* Receive the message and copy string to msg */
-// 	try {
-// 		bytes_read = recv(this->GetSockId(), message, length, FLAGS);
-// 		if (bytes_read <= 0) {
-// 			if (message != nullptr){
-// 				delete[] message;
-// 				message = nullptr;
-// 			}
-// 			return bytes_read;
-// 	}
-
-// 		// Size msg as bytes_read and copy message to it
-// 		msg.resize(bytes_read);
-// 		for (int i = 0; i < bytes_read; i++) {
-// 			msg[i] = message[i];
-// 		}
-// 	}
-// 	catch (const std::exception& e) {
-// 		if (message != nullptr){
-// 			delete[] message;
-// 			message = nullptr;
-// 		}
-// 		throw;
-// 	}
-
-// 	return bytes_read;
-// }
-
 int tcpSocket::Recv(std::string& msg, int length, double timeout_secs) const {
 	/* Socket must be connected before sending a message using send */
 	if (!this->connected) {

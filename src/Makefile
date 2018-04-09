@@ -5,18 +5,17 @@ THREAD_LIB          = -lpthread
 SOCKET_LIB          = -LSocket -lSocket
 SUBDIR              = Socket Bot Server
 
-
 .PHONY: all
 .PHONY: clean
 .PHONY: Dependencies
 .PHONY: BotnetServer
 .PHONY: BotnetBot
 
+
 all: Dependencies BotnetServer BotnetBot
 
 ## Server
 BotnetServer:
-	@echo "Hello"
 	g++ $(GPP_FLAGS) $(SERVER_OBJECT_LIST) -o BotnetServer $(THREAD_LIB) $(SOCKET_LIB)
 
 

