@@ -1,7 +1,7 @@
 # Botnet
 Lightweight botnet written in c++
 ## Getting started
-Currently this botnet works only on linux, tested on Ubuntu 16.04 and should work on mac OS and other version of Unix
+Currently this botnet works only on linux, tested on Ubuntu and should work on mac OS and other versions of Unix
 ### Installing
 First clone the package by entering this in your terminal:
 ```
@@ -22,3 +22,5 @@ When using the botnet server CLI, you will be given the options of:
   + Returns info about bots computer
 + Get File:
   + Attempts to download a file from the bots computer to the directory Botloads
++ Update Bot:
+  + Updates bot with given executable. **Read the warning printed by the command before using it**
