@@ -13,6 +13,8 @@ static const std::string BOT_AUTH    = "999";
 
 static const int AUTH_LEN = 3;
 
+// Random encryption key
+static const uint32_t DEFAULT_ENCYPTION_KEY = 0x79;
 
 }
 

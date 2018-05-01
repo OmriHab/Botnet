@@ -66,19 +66,19 @@ public:
 	* Sends message, sent message length is set as msg.length()
 	* Return value: number of bytes sent, or -1 on error.
 	*/
-	int Send(const std::string& msg) const;
+	virtual int Send(const std::string& msg) const;
 	/**
 	* Sends void*, size is gotten from var "size"
 	* Return value: number of bytes sent, or -1 on error.
 	*/
-	int Send(const void* msg, size_t size) const;
+	virtual int Send(const void* msg, size_t size) const;
 	/**
 	* Length specifies the largest amount of bytes willing to receive
 	* Message received will be placed in msg
 	* Return value: number of bytes received, or 0 on closed connection, -1 on error, and -2 on timeout.
 	*/
-	int Recv(std::string& msg, int length, double timeout_secs=-1.0) const;
-	int Recv(void* msg, int length, double timeout_secs=-1.0) const;
+	virtual int Recv(std::string& msg, int length, double timeout_secs=-1.0) const;
+	virtual int Recv(void* msg, int length, double timeout_secs=-1.0) const;
 
 	/**
 	* Connect to a host address.
