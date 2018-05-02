@@ -8,7 +8,7 @@
 
 #include "../Socket/Socket_Set.h"
 #include "../Socket/SocketIncludes.h"
-#include "../Socket/TCPSocket.h"
+#include "../Socket/SecureSocket.h"
 
 
 namespace botnet {
@@ -33,7 +33,7 @@ protected:
 	* Main listening socket.
 	* Lifespan from call to server::Serve() until closing of server
 	*/
-	tcpSocket MainSocket;
+	SecureSocket MainSocket;
 	/**
 	* Maximum connections to have at any given time.
 	* Any connection requested after max_connections
@@ -44,7 +44,7 @@ protected:
 	/**
 	* Master set of all sockets, including the listening socket, MainSocket
 	*/
-	Socket_Set<tcpSocket> master_set;
+	Socket_Set<SecureSocket> master_set;
 	/** 
 	* Connections management lock, lock whenever wishing to access master_set
 	*/
@@ -65,7 +65,7 @@ protected:
 	* msg    - Message sent from socket.
 	* socket - Socket who sent the message.
 	*/
-	virtual void HandleMessage(const std::string& msg, const tcpSocket& socket);
+	virtual void HandleMessage(const std::string& msg, const SecureSocket& socket);
 
 	/**
 	* Thread safe log, print if verbose is true. Uses out_stream_lock.

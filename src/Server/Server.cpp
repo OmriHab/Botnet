@@ -18,7 +18,7 @@ server::server(int port, int max_connections, bool verbose)
 	, continue_serving(true)
 	, MainSocket(port)
 	, max_connections(max_connections)
-	, master_set(Socket_Set<tcpSocket>::READ) { }
+	, master_set(Socket_Set<SecureSocket>::READ) { }
 
 server::~server() {
 
@@ -75,8 +75,8 @@ void server::HandleConnections() {
 	static const int KILOBYTE     = 1024;
 	static const int MAX_MSG_SIZE = 4*KILOBYTE;
 
-	std::deque<tcpSocket> readable;
-	tcpSocket tmpSocket;
+	std::deque<SecureSocket> readable;
+	SecureSocket tmpSocket;
 
 	// Continue serving until asked to shut down by user
 	while (this->continue_serving) {
@@ -118,7 +118,7 @@ void server::HandleConnections() {
 	}
 }
 
-void server::HandleMessage(const std::string& msg, const tcpSocket& sender) {
+void server::HandleMessage(const std::string& msg, const SecureSocket& sender) {
 	// Just print the message
 	ThreadSafeLog(msg + "\n\n");	
 }

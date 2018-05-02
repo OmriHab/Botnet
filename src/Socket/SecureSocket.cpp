@@ -1,5 +1,5 @@
 #include "SecureSocket.h"
-
+#include <iostream>
 
 using namespace botnet;
 
@@ -11,6 +11,12 @@ SecureSocket::SecureSocket(int port, uint32_t encryption_key)
 							: tcpSocket::tcpSocket(port)
 							, encryption_key(encryption_key)
 							{ }
+
+SecureSocket::SecureSocket(const SecureSocket& copy)
+							: tcpSocket::tcpSocket(copy)
+							, encryption_key(copy.encryption_key)
+							{ }
+
 
 SecureSocket::SecureSocket() : encryption_key(botnet_defines::DEFAULT_ENCYPTION_KEY) {
 
@@ -78,6 +84,11 @@ int SecureSocket::Recv(void* msg, int length, double timeout_secs) const {
 	if (retv <= 0) {
 		return retv;
 	}
-	std::string decrypted = this->Decrypt(msg, length);
-	msg = static_cast<void*>(&decrypted);
+	std::string decrypted = this->Decrypt(msg, retv);
+
+	for (int i = 0; i < retv; i++) {
+		static_cast<char*>(msg)[i] = decrypted[i];
+	}
+
+	return retv;
 }
