@@ -128,20 +128,24 @@ void Bot::GetFile() {
 	int retv = 0;
 
 	if (this->server_connection.Recv(file_path, MAX_FILE_LENGTH, TIMEOUT) > 0) {
+		std::ifstream file_to_send;
+		file_to_send.open(file_path);
+		
 		// Check if have requested file
-		if (access(file_path.c_str(), F_OK) == 0) {
+		if (file_to_send.is_open()) {
 			retv = this->server_connection.Send(&file_found, sizeof(char));
 		}
 		else {
 			retv = this->server_connection.Send(&file_not_found, sizeof(char));
+			return;
 		}
 
 		if (retv != sizeof(char)) {
 			// On fail, abort
 			return;
 		}
-
-		// Send the requested file
+		
+		/*---Send file size---*/
 		struct stat st = { 0 };
 		if (stat(file_path.c_str(), &st) == -1) {
 			return;
@@ -153,12 +157,7 @@ void Bot::GetFile() {
 			return;
 		}
 
-		std::ifstream file_to_send;
-		file_to_send.open(file_path);
-		if (file_to_send.bad()) {
-			return;
-		}
-
+		/*---Send file contents---*/
 		std::string file_content((std::istreambuf_iterator<char>(file_to_send)),
 			                     (std::istreambuf_iterator<char>()));
 
